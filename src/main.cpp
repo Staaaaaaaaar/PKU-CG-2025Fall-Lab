@@ -58,6 +58,16 @@ namespace SkeletalAnimation {
             "}\n";
 }
 
+static int current_gesture = 0; // 0: paper, 1: rock, 2: scissors
+static int current_status = 1; // 0: pause, 1: playing
+
+static bool is_dragging = false;
+static double last_cursor_x = 0.0;
+static double last_cursor_y = 0.0;
+static float rotation_angle_x = 0.0f;
+static float rotation_angle_z = 0.0f;
+const float ROTATION_SPEED = 0.01f;
+
 static void error_callback(int error, const char *description) {
     fprintf(stderr, "Error: %s\n", description);
 }
@@ -65,6 +75,35 @@ static void error_callback(int error, const char *description) {
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_P) current_gesture = 0; // paper
+        if (key == GLFW_KEY_R) current_gesture = 1; // rock
+        if (key == GLFW_KEY_S) current_gesture = 2; // scissors
+        if (key == GLFW_KEY_SPACE) current_status = 1 - current_status; // optional keyboard toggle
+    }
+}
+
+static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            is_dragging = true;
+            glfwGetCursorPos(window, &last_cursor_x, &last_cursor_y);
+        } else if (action == GLFW_RELEASE) {
+            is_dragging = false;
+        }
+    }
+}
+
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (is_dragging) {
+        float delta_x = (float)(xpos - last_cursor_x);
+        rotation_angle_x += delta_x * ROTATION_SPEED;
+        float delta_y = (float)(ypos - last_cursor_y);
+        rotation_angle_z += delta_y * ROTATION_SPEED;
+        last_cursor_y = ypos;
+        last_cursor_x = xpos;
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -90,6 +129,8 @@ int main(int argc, char *argv[]) {
     }
 
     glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
 
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0);
@@ -124,17 +165,26 @@ int main(int argc, char *argv[]) {
     SkeletalMesh::SkeletonModifier modifier;
 
     glEnable(GL_DEPTH_TEST);
+
+    const char *finger_prefixes[] = {"thumb", "index", "middle", "ring", "pinky"};
+    const char *phalange_suffixes[] = {"_proximal_phalange", "_intermediate_phalange", "_distal_phalange"};
+    float current_angles[5][3] = {0};
+    float current_swing[5] = {0};
+    float animation_speed = 4.0f; // Controls how fast the hand transitions between gestures
+
     while (!glfwWindowShouldClose(window)) {
+        float last_time = passed_time;
         passed_time = (float) glfwGetTime();
+        float delta_time = passed_time - last_time;
 
         // --- You may edit below ---
 
         // Example: Rotate the hand
         // * turn around every 4 seconds
-        float metacarpals_angle = passed_time * (M_PI / 4.0f);
+        // float metacarpals_angle = passed_time * (M_PI / 4.0f);
         // * target = metacarpals
         // * rotation axis = (1, 0, 0)
-        modifier["metacarpals"] = glm::rotate(glm::identity<glm::mat4>(), metacarpals_angle, glm::fvec3(1.0, 0.0, 0.0));
+        // modifier["metacarpals"] = glm::rotate(glm::identity<glm::mat4>(), metacarpals_angle, glm::fvec3(1.0, 0.0, 0.0));
 
         /**********************************************************************************\
         *
@@ -183,14 +233,69 @@ int main(int argc, char *argv[]) {
 
         // Example: Animate the index finger
         // * period = 2.4 seconds
-        float period = 2.4f;
-        float time_in_period = fmod(passed_time, period);
+        // float period = 2.4f;
+        // float time_in_period = fmod(passed_time, period);
         // * angle: 0 -> PI/3 -> 0
-        float thumb_angle = abs(time_in_period / (period * 0.5f) - 1.0f) * (M_PI / 3.0);
+        // float thumb_angle = abs(time_in_period / (period * 0.5f) - 1.0f) * (M_PI / 3.0);
         // * target = proximal phalange of the index
         // * rotation axis = (0, 0, 1)
-        modifier["index_proximal_phalange"] = glm::rotate(glm::identity<glm::mat4>(), thumb_angle,
-                                                          glm::fvec3(0.0, 0.0, 1.0));
+        // modifier["index_proximal_phalange"] = glm::rotate(glm::identity<glm::mat4>(), thumb_angle,
+        //                                                   glm::fvec3(0.0, 0.0, 1.0));
+        
+    
+        // My Animation: Rock, Paper, Scissors
+
+        glm::mat4 metacarpals_transform = glm::rotate(glm::identity<glm::mat4>(), rotation_angle_x, glm::fvec3(1.0, 0.0, 0.0));
+        metacarpals_transform *= glm::rotate(glm::identity<glm::mat4>(), rotation_angle_z, glm::fvec3(0.0, 0.0, 1.0));
+        modifier["metacarpals"] = metacarpals_transform;
+
+        if (current_status == 1)
+        {
+        float target_angles[5][3] = {0};
+        float target_swing[5] = {0};
+
+        if (current_gesture == 1) { // Rock
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
+            target_angles[1][0] = M_PI * 0.5f; target_angles[1][1] = M_PI * 0.4f; target_angles[1][2] = M_PI * 0.5f;
+            target_angles[2][0] = M_PI * 0.48f; target_angles[2][1] = M_PI * 0.4f; target_angles[2][2] = M_PI * 0.5f;
+            target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.4f; target_angles[3][2] = M_PI * 0.4f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.39f; target_angles[4][2] = M_PI * 0.5f;
+            target_swing[0] = -M_PI * 0.1f; target_swing[1] = M_PI * 0.054f; target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f; target_swing[4] = -M_PI * 0.09f;
+        } else if (current_gesture == 2) { // Scissors
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.3f; target_angles[0][2] = M_PI * 0.2f;
+            target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.35f; target_angles[3][2] = M_PI * 0.2f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.35f; target_angles[4][2] = M_PI * 0.2f;
+            target_swing[0] = -M_PI * 0.1f; target_swing[3] = -M_PI * 0; target_swing[4] = M_PI * 0.01f;
+        }
+        // else gesture is 0 (Paper), target_angles are all 0, which is the default.
+
+        // Smoothly interpolate from current angles to target angles
+        for (int i = 0; i < 5; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                float diff = target_angles[i][j] - current_angles[i][j];
+                current_angles[i][j] += diff * animation_speed * delta_time;
+                
+            }
+        }
+        for (int i = 0; i < 5; ++i) {
+            float diff = target_swing[i] - current_swing[i];
+            current_swing[i] += diff * animation_speed * delta_time;
+        }
+
+        // Apply rotations to skeleton
+        for (int i = 0; i < 5; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                std::string bone_name = std::string(finger_prefixes[i]) + phalange_suffixes[j];
+                modifier[bone_name] = glm::rotate(glm::identity<glm::mat4>(), current_angles[i][j],
+                                                  glm::fvec3(0.0, 0.0, 1.0));
+            }
+        }
+        for (int i = 0; i < 5; ++i) {
+            std::string bone_name = std::string(finger_prefixes[i]) + phalange_suffixes[0];
+            modifier[bone_name] = glm::rotate(glm::identity<glm::mat4>(), current_swing[i],
+                                              glm::fvec3(0.0, 1.0, 0.0)) * modifier[bone_name];
+        }
+        }
 
         // --- You may edit above ---
 
