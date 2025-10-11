@@ -58,13 +58,14 @@ namespace SkeletalAnimation {
             "}\n";
 }
 
-static int current_gesture = 0; // 0: paper, 1: rock, 2: scissors
+static int current_gesture = 0;
 static int current_status = 1; // 0: pause, 1: playing
 
 static bool is_dragging = false;
 static double last_cursor_x = 0.0;
 static double last_cursor_y = 0.0;
 static float rotation_angle_x = 0.0f;
+static float rotation_angle_y = 0.0f;
 static float rotation_angle_z = 0.0f;
 const float ROTATION_SPEED = 0.01f;
 
@@ -77,9 +78,19 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_P) current_gesture = 0; // paper
-        if (key == GLFW_KEY_R) current_gesture = 1; // rock
-        if (key == GLFW_KEY_S) current_gesture = 2; // scissors
+        if (key == GLFW_KEY_0) current_gesture = 0;
+        if (key == GLFW_KEY_1) current_gesture = 1;
+        if (key == GLFW_KEY_2) current_gesture = 2;
+        if (key == GLFW_KEY_3) current_gesture = 3;
+        if (key == GLFW_KEY_4) current_gesture = 4;
+        if (key == GLFW_KEY_5) current_gesture = 5;
+        if (key == GLFW_KEY_6) current_gesture = 6;
+        if (key == GLFW_KEY_7) current_gesture = 7;
+        if (key == GLFW_KEY_8) current_gesture = 8;
+        if (key == GLFW_KEY_9) current_gesture = 9;
+        if (key == GLFW_KEY_P) current_gesture = 10; // paper
+        if (key == GLFW_KEY_R) current_gesture = 11; // rock
+        if (key == GLFW_KEY_S) current_gesture = 12; // scissors
         if (key == GLFW_KEY_SPACE) current_status = 1 - current_status; // optional keyboard toggle
     }
 }
@@ -99,8 +110,10 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
     if (is_dragging) {
         float delta_x = (float)(xpos - last_cursor_x);
         rotation_angle_x += delta_x * ROTATION_SPEED;
+        rotation_angle_x = fmod(rotation_angle_x, 2.0f * (float)M_PI);
         float delta_y = (float)(ypos - last_cursor_y);
         rotation_angle_z += delta_y * ROTATION_SPEED;
+        rotation_angle_z = fmod(rotation_angle_z, 2.0f * (float)M_PI);
         last_cursor_y = ypos;
         last_cursor_x = xpos;
     }
@@ -245,29 +258,79 @@ int main(int argc, char *argv[]) {
     
         // My Animation: Rock, Paper, Scissors
 
-        glm::mat4 metacarpals_transform = glm::rotate(glm::identity<glm::mat4>(), rotation_angle_x, glm::fvec3(1.0, 0.0, 0.0));
-        metacarpals_transform *= glm::rotate(glm::identity<glm::mat4>(), rotation_angle_z, glm::fvec3(0.0, 0.0, 1.0));
-        modifier["metacarpals"] = metacarpals_transform;
-
         if (current_status == 1)
         {
         float target_angles[5][3] = {0};
         float target_swing[5] = {0};
 
-        if (current_gesture == 1) { // Rock
+        if (current_gesture == 0) { // OK
+            target_angles[0][0] = M_PI * 0.1f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.2f;
+            target_angles[1][0] = M_PI * 0.3f; target_angles[1][1] = M_PI * 0.3f; target_angles[1][2] = M_PI * 0.3f;
+            target_swing[0] = -M_PI * 0.08f; target_swing[1] = M_PI * 0.08f;
+        }
+        else if (current_gesture == 1) {
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
+            target_angles[2][0] = M_PI * 0.48f; target_angles[2][1] = M_PI * 0.4f; target_angles[2][2] = M_PI * 0.5f;
+            target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.4f; target_angles[3][2] = M_PI * 0.4f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.39f; target_angles[4][2] = M_PI * 0.5f;
+            target_swing[0] = -M_PI * 0.1f; target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f; target_swing[4] = -M_PI * 0.09f;
+        }
+        else if (current_gesture == 2) {
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
+            target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.35f; target_angles[3][2] = M_PI * 0.2f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.35f; target_angles[4][2] = M_PI * 0.2f;
+            target_swing[0] = -M_PI * 0.1f; target_swing[3] = -M_PI * 0; target_swing[4] = M_PI * 0.01f;
+        }
+        else if (current_gesture == 3) {
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.35f; target_angles[4][2] = M_PI * 0.2f;
+            target_swing[0] = -M_PI * 0.1f; target_swing[4] = -M_PI * 0.09f;
+        }
+        else if (current_gesture == 4) {
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
+            target_swing[0] = -M_PI * 0.1f;
+        }
+        else if (current_gesture == 6) {
+            target_angles[1][0] = M_PI * 0.47f; target_angles[1][1] = M_PI * 0.35f; target_angles[1][2] = M_PI * 0.2f;
+            target_angles[2][0] = M_PI * 0.45f; target_angles[2][1] = M_PI * 0.35f; target_angles[2][2] = M_PI * 0.2f;
+            target_angles[3][0] = M_PI * 0.47f; target_angles[3][1] = M_PI * 0.35f; target_angles[3][2] = M_PI * 0.2f;
+            target_swing[1] = M_PI * 0.057f; target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f;
+        }
+        else if (current_gesture == 7) {
+            target_angles[0][0] = M_PI * 0.2f; target_angles[0][1] = M_PI * 0.0f; target_angles[0][2] = M_PI * 0.0f;
+            target_angles[1][0] = M_PI * 0.45f; target_angles[1][1] = M_PI * 0.05f; target_angles[1][2] = M_PI * 0.05f;
+            target_angles[2][0] = M_PI * 0.4f; target_angles[2][1] = M_PI * 0.05f; target_angles[2][2] = M_PI * 0.05f;
+            target_angles[3][0] = M_PI * 0.4f; target_angles[3][1] = M_PI * 0.05f; target_angles[3][2] = M_PI * 0.05f;
+            target_angles[4][0] = M_PI * 0.4f; target_angles[4][1] = M_PI * 0.05f; target_angles[4][2] = M_PI * 0.05f;
+            target_swing[0] = -M_PI * 0.3f; target_swing[1] = M_PI * 0.0f; target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f; target_swing[4] = -M_PI * 0.09f;
+        }
+        else if (current_gesture == 8) {
+            target_angles[2][0] = M_PI * 0.48f; target_angles[2][1] = M_PI * 0.35f; target_angles[2][2] = M_PI * 0.2f;
+            target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.35f; target_angles[3][2] = M_PI * 0.2f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.35f; target_angles[4][2] = M_PI * 0.2f;
+            target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f; target_swing[4] = -M_PI * 0.09f;
+        }
+        else if (current_gesture == 9) {
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
+            target_angles[1][0] = M_PI * 0.0f; target_angles[1][1] = M_PI * 0.4f; target_angles[1][2] = M_PI * 0.5f;
+            target_angles[2][0] = M_PI * 0.48f; target_angles[2][1] = M_PI * 0.4f; target_angles[2][2] = M_PI * 0.5f;
+            target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.4f; target_angles[3][2] = M_PI * 0.4f;
+            target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.39f; target_angles[4][2] = M_PI * 0.5f;
+            target_swing[0] = -M_PI * 0.1f; target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f; target_swing[4] = -M_PI * 0.09f;
+        }
+        else if (current_gesture == 11) { // Rock
             target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
             target_angles[1][0] = M_PI * 0.5f; target_angles[1][1] = M_PI * 0.4f; target_angles[1][2] = M_PI * 0.5f;
             target_angles[2][0] = M_PI * 0.48f; target_angles[2][1] = M_PI * 0.4f; target_angles[2][2] = M_PI * 0.5f;
             target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.4f; target_angles[3][2] = M_PI * 0.4f;
             target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.39f; target_angles[4][2] = M_PI * 0.5f;
             target_swing[0] = -M_PI * 0.1f; target_swing[1] = M_PI * 0.054f; target_swing[2] = -M_PI * 0.02f; target_swing[3] = -M_PI * 0.06f; target_swing[4] = -M_PI * 0.09f;
-        } else if (current_gesture == 2) { // Scissors
-            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.3f; target_angles[0][2] = M_PI * 0.2f;
+        } else if (current_gesture == 12) { // Scissors
+            target_angles[0][0] = M_PI * 0.12f; target_angles[0][1] = M_PI * 0.2f; target_angles[0][2] = M_PI * 0.4f;
             target_angles[3][0] = M_PI * 0.49f; target_angles[3][1] = M_PI * 0.35f; target_angles[3][2] = M_PI * 0.2f;
             target_angles[4][0] = M_PI * 0.48f; target_angles[4][1] = M_PI * 0.35f; target_angles[4][2] = M_PI * 0.2f;
             target_swing[0] = -M_PI * 0.1f; target_swing[3] = -M_PI * 0; target_swing[4] = M_PI * 0.01f;
         }
-        // else gesture is 0 (Paper), target_angles are all 0, which is the default.
 
         // Smoothly interpolate from current angles to target angles
         for (int i = 0; i < 5; ++i) {
@@ -295,6 +358,10 @@ int main(int argc, char *argv[]) {
             modifier[bone_name] = glm::rotate(glm::identity<glm::mat4>(), current_swing[i],
                                               glm::fvec3(0.0, 1.0, 0.0)) * modifier[bone_name];
         }
+        glm::mat4 metacarpals_transform = glm::rotate(glm::identity<glm::mat4>(), rotation_angle_x, glm::fvec3(1.0, 0.0, 0.0));
+        metacarpals_transform *= glm::rotate(glm::identity<glm::mat4>(), rotation_angle_y, glm::fvec3(0.0, 1.0, 0.0));
+        metacarpals_transform *= glm::rotate(glm::identity<glm::mat4>(), rotation_angle_z, glm::fvec3(0.0, 0.0, 1.0));
+        modifier["metacarpals"] = metacarpals_transform;
         }
 
         // --- You may edit above ---
