@@ -4,7 +4,7 @@ add_executable(Hand
         skeletal_mesh.h
         texture_image.h)
 
-target_link_libraries(Hand PRIVATE assimp::assimp glew_s glm stb glfw)
+target_link_libraries(Hand PRIVATE assimp::assimp glew_s glm stb glfw imgui)
 target_include_directories(Hand PRIVATE
         ../third_party/glew/include
         ${CMAKE_CURRENT_BINARY_DIR})
