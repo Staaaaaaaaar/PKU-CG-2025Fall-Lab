@@ -100,7 +100,15 @@ set (GLEW_PUBLIC_HEADERS_FILES ${GLEW_DIR}/include/GL/wglew.h ${GLEW_DIR}/includ
 set (GLEW_SRC_FILES ${GLEW_DIR}/src/glew.c)
 
 if (WIN32)
-  list (APPEND GLEW_SRC_FILES ${GLEW_DIR}/build/glew.rc)
+  # Only append the Visual Studio resource file if it actually exists.
+  # On some checkouts (or when building from a trimmed source tree) the
+  # build/glew.rc file may be missing which causes CMake to error with
+  # "Cannot find source file" and then "No SOURCES given to target".
+  if (EXISTS "${GLEW_DIR}/build/glew.rc")
+    list (APPEND GLEW_SRC_FILES ${GLEW_DIR}/build/glew.rc)
+  else()
+    message(WARNING "GLEW: ${GLEW_DIR}/build/glew.rc not found; building without .rc resource file")
+  endif()
 endif ()
 
 add_library (glew SHARED ${GLEW_PUBLIC_HEADERS_FILES} ${GLEW_SRC_FILES})
