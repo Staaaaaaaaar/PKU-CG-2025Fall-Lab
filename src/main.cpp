@@ -23,6 +23,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
+#include <imgui/imgui_internal.h>
 
 namespace SkeletalAnimation {
     const char *vertex_shader_330 =
@@ -79,6 +80,9 @@ static void error_callback(int error, const char *description) {
 }
 
 static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    ImGuiIO &io = ImGui::GetIO();
+    // let ImGui capture keyboard when it wants
+    if (io.WantCaptureKeyboard) return;
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 
@@ -118,6 +122,32 @@ static float cam_param = 1.0f;
 // Perspective camera parameter: field of view (degrees)
 static float cam_fov_deg = 60.0f;
 
+// Camera states for A-B transition
+struct CameraState {
+    glm::fvec3 pos;
+    glm::quat quat;
+    glm::fvec3 euler_deg;
+};
+
+static CameraState camera_A = {
+    glm::fvec3(25.81f, 9.88f, 23.09f),
+    glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+    glm::fvec3(-4.8f, 46.44f, 0.0f)
+};
+
+static CameraState camera_B = {
+    glm::fvec3(-26.05f, 10.43f, 24.58f),
+    glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+    glm::fvec3(-6.0f, -48.55f, 0.0f)
+};
+
+// Animation state
+static bool is_camera_animating = false;
+static float camera_anim_progress = 0.0f;
+static float camera_anim_duration = 2.0f; // seconds
+static bool is_animating_A_to_B = true;
+
+
 // Helper: convert Euler degrees (pitch=x, yaw=y, roll=z) to quaternion
 static glm::quat eulerDegToQuat(const glm::fvec3 &deg) {
     glm::fvec3 rad = glm::radians(deg);
@@ -132,7 +162,7 @@ static glm::quat eulerDegToQuat(const glm::fvec3 &deg) {
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     ImGuiIO &io = ImGui::GetIO();
     // let ImGui capture mouse when it wants
-    if (io.WantCaptureMouse) return;
+    if (io.WantCaptureMouse || is_camera_animating) return;
     if (button >= 0 && button < 8) {
         if (action == GLFW_PRESS) {
             mouseButtons[button] = true;
@@ -145,7 +175,7 @@ static void mouse_button_callback(GLFWwindow *window, int button, int action, in
 
 static void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     ImGuiIO &io = ImGui::GetIO();
-    if (io.WantCaptureMouse) {
+    if (io.WantCaptureMouse || is_camera_animating) {
         // still update last cursor so when leaving ImGui control we don't jump
         last_cursor_x = xpos; last_cursor_y = ypos; return;
     }
@@ -175,7 +205,7 @@ static void cursor_position_callback(GLFWwindow *window, double xpos, double ypo
 
 static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     ImGuiIO &io = ImGui::GetIO();
-    if (io.WantCaptureMouse) return;
+    if (io.WantCaptureMouse || is_camera_animating) return;
     // move camera along its forward direction
     glm::fvec3 forward = glm::rotate(cam_quat, glm::fvec3(0.0f, 0.0f, -1.0f));
     cam_pos += forward * (float)yoffset * MOUSE_ZOOM_SENS;
@@ -185,6 +215,10 @@ static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) 
 int main(int argc, char *argv[]) {
     GLFWwindow *window;
     GLuint vertex_shader, fragment_shader, program;
+
+    // Initialize camera quaternions from euler angles
+    camera_A.quat = eulerDegToQuat(camera_A.euler_deg);
+    camera_B.quat = eulerDegToQuat(camera_B.euler_deg);
 
     glfwSetErrorCallback(error_callback);
 
@@ -372,9 +406,28 @@ int main(int argc, char *argv[]) {
         modifier["metacarpals"] = metacarpals_transform;
         }
 
-    // --- Camera: interactive single camera ---
-    // Update camera quaternion from Euler inputs (UI sets degrees)
+    // --- Camera Animation ---
+    if (is_camera_animating) {
+        camera_anim_progress += delta_time / camera_anim_duration;
+        if (camera_anim_progress >= 1.0f) {
+            camera_anim_progress = 1.0f;
+            is_camera_animating = false;
+            cam_pos = is_animating_A_to_B ? camera_B.pos : camera_A.pos;
+            cam_euler_deg = is_animating_A_to_B ? camera_B.euler_deg : camera_A.euler_deg;
+        }
+
+        CameraState start = is_animating_A_to_B ? camera_A : camera_B;
+        CameraState end = is_animating_A_to_B ? camera_B : camera_A;
+
+        cam_pos = glm::mix(start.pos, end.pos, camera_anim_progress);
+        cam_euler_deg = glm::mix(start.euler_deg, end.euler_deg, camera_anim_progress);
+
+        // We don't update cam_euler_deg during animation, it will snap at the end.
+        // Or we could try to convert quat back to euler, but it's complex.
+    }
+    // Update camera quaternion from Euler angles
     cam_quat = eulerDegToQuat(cam_euler_deg);
+
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -421,6 +474,12 @@ int main(int argc, char *argv[]) {
             ImGui::Separator();
             ImGui::Text("Camera");
 
+            // Disable controls during animation
+            if (is_camera_animating) {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
+
             // Position: 3 independent sliders with input boxes on the right
             ImGui::Text("Position");
             ImGui::PushID("pos");
@@ -446,6 +505,49 @@ int main(int argc, char *argv[]) {
 
             ImGui::SliderFloat("FOV (deg)", &cam_fov_deg, 10.0f, 120.0f);
             if (ImGui::Button("Reset Camera")) { cam_pos = glm::fvec3(0.0f,7.6f,25.0f); cam_euler_deg = glm::fvec3(0.0f); cam_fov_deg = 60.0f; }
+
+            if (is_camera_animating) {
+                ImGui::PopStyleVar();
+                ImGui::PopItemFlag();
+            }
+
+            ImGui::Separator();
+            ImGui::Text("Camera A-B Transition");
+
+            ImGui::Text("Point A");
+            ImGui::InputFloat3("A Pos##A", (float*)&camera_A.pos.x, "%.2f");
+            ImGui::InputFloat3("A Euler (deg)##A", (float*)&camera_A.euler_deg.x, "%.2f");
+
+            ImGui::Text("Point B");
+            ImGui::InputFloat3("B Pos##B", (float*)&camera_B.pos.x, "%.2f");
+            ImGui::InputFloat3("B Euler (deg)##B", (float*)&camera_B.euler_deg.x, "%.2f");
+
+            ImGui::SliderFloat("Anim Duration (s)", &camera_anim_duration, 0.5f, 10.0f);
+
+            if (ImGui::Button("Set A")) {
+                camera_A.pos = cam_pos;
+                camera_A.euler_deg = cam_euler_deg;
+                camera_A.quat = cam_quat;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Set B")) {
+                camera_B.pos = cam_pos;
+                camera_B.euler_deg = cam_euler_deg;
+                camera_B.quat = cam_quat;
+            }
+
+            if (ImGui::Button("Go A->B")) {
+                is_camera_animating = true;
+                is_animating_A_to_B = true;
+                camera_anim_progress = 0.0f;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Go B->A")) {
+                is_camera_animating = true;
+                is_animating_A_to_B = false;
+                camera_anim_progress = 0.0f;
+            }
+
 
             ImGui::End();
         }
