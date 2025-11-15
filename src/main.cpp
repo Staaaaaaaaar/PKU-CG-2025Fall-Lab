@@ -39,7 +39,7 @@ private:
 
         _planet_texture = std::make_unique<Texture2D>(fs::path("textures/2k_saturn.jpg"));
         // Particle data
-        _particle_count = 100000;
+        _particle_count = 50000;
         std::vector<float> seeds(_particle_count);
         srand(time(0));
         for (int i = 0; i < _particle_count; ++i) {
@@ -80,6 +80,17 @@ private:
             }
         } else {
             ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
+        }
+        ImGui::Text("Particle Settings");
+        int new_count = _particle_count;
+        if (ImGui::SliderInt("Particle Count", &new_count, 10000, 1000000)) {
+            if (new_count != _particle_count) {
+                std::vector<float> seeds(new_count);
+                for (float &s : seeds) { s = rand() / static_cast<float>(RAND_MAX); }
+                glBindBuffer(GL_ARRAY_BUFFER, _particle_vbo);
+                glBufferData(GL_ARRAY_BUFFER, seeds.size() * sizeof(float), seeds.data(), GL_STATIC_DRAW);
+                _particle_count = new_count;
+            }
         }
         if (ImGui::CollapsingHeader("Camera")) {
             _camera->draw_ui();
