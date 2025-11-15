@@ -25,17 +25,17 @@ void main() {
 
     float angle = random(in_Seed * 12.9898) * 2.0 * 3.14159265;
     float radius = ringRadius + random(in_Seed * 78.233) * ringWidth;
-    float y = (random(in_Seed * 34.345) - 0.5) * 0.5;
+    float z = (random(in_Seed * 34.345) - 0.5) * 0.5;
 
     // Add some orbital motion
     float speed = random(in_Seed * 54.123) * 0.1 + 0.05;
     float current_angle = angle + u_Time * speed;
 
     float x = cos(current_angle) * radius;
-    float z = sin(current_angle) * radius;
+    float y = sin(current_angle) * radius;
 
     vs_out.frag_pos = vec3(x, y, z);
-    vs_out.normal = normalize(vec3(x, 0.0, z)); // Normals point outwards from the ring center on the XZ plane
+    vs_out.normal = normalize(vec3(x, y, 0.0)); // Normals point outwards from the ring center on the XY plane
 
     // Assign color based on distance from Saturn (center)
     float colorFactor = (radius - ringRadius) / ringWidth;
