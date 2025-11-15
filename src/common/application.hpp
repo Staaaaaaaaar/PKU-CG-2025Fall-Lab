@@ -66,6 +66,8 @@ private:
 class ModelViewerCamera {
 public:
   void draw_ui();
+  void orbit(float delta_yaw, float delta_pitch);
+  void zoom(float delta_distance);
 
   glm::mat4 view() const;
   glm::mat4 projection(float aspect) const;
@@ -76,5 +78,5 @@ private:
   float _field_of_view = glm::radians(25.0f);
   float _pitch = glm::radians(60.0f);
   float _yaw = glm::radians(60.0f);
-  float _distance = 3.0f;
+  float _distance = 80.0f;
 };

@@ -6,6 +6,7 @@ out VS_OUT {
     vec3 frag_pos;
     vec3 normal;
     vec3 color;
+    float particle_size;
 } vs_out;
 
 uniform mat4 u_Projection;
@@ -20,7 +21,7 @@ float random(float seed) {
 void main() {
     float ringRadius = 15.0;
     float ringWidth = 5.0;
-    float particleSize = 0.05;
+    float particleSize = random(in_Seed * 42.42) * 0.05 + 0.02;
 
     float angle = random(in_Seed * 12.9898) * 2.0 * 3.14159265;
     float radius = ringRadius + random(in_Seed * 78.233) * ringWidth;

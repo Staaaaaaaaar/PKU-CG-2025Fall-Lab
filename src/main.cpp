@@ -1,6 +1,7 @@
 #include "common/application.hpp"
 #include "common/shader.hpp"
 #include "common/mesh.hpp"
+#include "common/texture.hpp"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -36,6 +37,7 @@ private:
             fs::path("shaders/planet.frag")
         );
 
+        _planet_texture = std::make_unique<Texture2D>(fs::path("textures/2k_saturn.jpg"));
         // Particle data
         _particle_count = 100000;
         std::vector<float> seeds(_particle_count);
@@ -63,14 +65,12 @@ private:
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_PROGRAM_POINT_SIZE);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
 
     void draw_ui() {
         ImGui::Begin("Settings");
         ImGui::Text("Light Settings");
-        ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -50.0f, 50.0f);
+        ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
         if (ImGui::CollapsingHeader("Camera")) {
             _camera->draw_ui();
         }
@@ -98,6 +98,9 @@ private:
         glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
         glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
         glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_Color"), 1, glm::value_ptr(glm::vec3(0.9f, 0.8f, 0.6f)));
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, _planet_texture->get());
+        glUniform1i(glGetUniformLocation(_planet_program->get(), "u_Texture"), 0);
         _planet_mesh->draw();
 
 
@@ -119,14 +122,65 @@ private:
         draw();
     }
 
+    void cursor_position_callback(double xpos, double ypos) override {
+        ImGuiIO &io = ImGui::GetIO();
+        if (io.WantCaptureMouse) {
+            _last_cursor_x = xpos;
+            _last_cursor_y = ypos;
+            return;
+        }
+
+        if (_is_orbiting && _camera) {
+            float dx = static_cast<float>(xpos - _last_cursor_x);
+            float dy = static_cast<float>(ypos - _last_cursor_y);
+            _camera->orbit(dx * _orbit_sensitivity, -dy * _orbit_sensitivity);
+        }
+
+        _last_cursor_x = xpos;
+        _last_cursor_y = ypos;
+    }
+
+    void mouse_button_callback(int button, int action, int mods) override {
+        (void)mods;
+        ImGuiIO &io = ImGui::GetIO();
+        if (io.WantCaptureMouse) {
+            return;
+        }
+
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            if (action == GLFW_PRESS) {
+                _is_orbiting = true;
+                glfwGetCursorPos(_window, &_last_cursor_x, &_last_cursor_y);
+            } else if (action == GLFW_RELEASE) {
+                _is_orbiting = false;
+            }
+        }
+    }
+
+    void scroll_callback(double xoffset, double yoffset) override {
+        (void)xoffset;
+        ImGuiIO &io = ImGui::GetIO();
+        if (io.WantCaptureMouse || !_camera) {
+            return;
+        }
+
+        _camera->zoom(static_cast<float>(-yoffset) * _zoom_sensitivity);
+    }
+
     std::unique_ptr<ModelViewerCamera> _camera;
     std::unique_ptr<Program> _particle_program;
     std::unique_ptr<Program> _planet_program;
     std::unique_ptr<Mesh> _planet_mesh;
+    std::unique_ptr<Texture2D> _planet_texture;
     GLuint _particle_vao = 0, _particle_vbo = 0;
     int _particle_count = 0;
-    glm::vec3 _light_pos = glm::vec3(30.0f, 30.0f, 30.0f);
+    glm::vec3 _light_pos = glm::vec3(60.0f, 60.0f, 60.0f);
     int _width = 1280, _height = 720;
+    bool _is_orbiting = false;
+    double _last_cursor_x = 0.0;
+    double _last_cursor_y = 0.0;
+    const float _orbit_sensitivity = 0.005f;
+    const float _zoom_sensitivity = 1.0f;
 };
 
 Mesh create_sphere_mesh(float radius, int sectors, int stacks) {

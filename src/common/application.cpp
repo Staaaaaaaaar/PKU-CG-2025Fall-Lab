@@ -260,11 +260,22 @@ bool Application::should_draw_profiler_ui() const {
 }
 
 void ModelViewerCamera::draw_ui() {
-  ImGui::SliderAngle("Field Of View", &_field_of_view, 0.1f, 180.0f);
   ImGui::SliderAngle("Pitch", &_pitch, 10.0f, 170.0f);
   ImGui::SliderAngle("Yaw", &_yaw);
+  ImGui::SliderFloat("Distance", &_distance, 0.5f, 200.0f);
+  ImGui::SliderAngle("Field Of View", &_field_of_view, 0.1f, 180.0f);
   ImGui::SliderFloat("Focus Height", &_focus_height, -3.0f, 3.0f);
-  ImGui::SliderFloat("Distance", &_distance, 0.5f, 30.0f);
+}
+
+void ModelViewerCamera::orbit(float delta_yaw, float delta_pitch) {
+  _yaw += delta_yaw;
+  _pitch += delta_pitch;
+}
+
+void ModelViewerCamera::zoom(float delta_distance) {
+  constexpr float min_distance = 1.0f;
+  constexpr float max_distance = 200.0f;
+  _distance = glm::clamp(_distance + delta_distance, min_distance, max_distance);
 }
 
 glm::vec3 ModelViewerCamera::position() const {
@@ -273,7 +284,7 @@ glm::vec3 ModelViewerCamera::position() const {
 }
 
 glm::mat4 ModelViewerCamera::projection(float aspect) const {
-  return glm::perspective(_field_of_view, aspect, 0.01f, 100.0f);
+  return glm::perspective(_field_of_view, aspect, 0.01f, 1000.0f);
 }
 
 glm::mat4 ModelViewerCamera::view() const {

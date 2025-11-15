@@ -5,11 +5,13 @@ out vec4 frag_color;
 in VS_OUT {
     vec3 frag_pos;
     vec3 normal;
+    vec2 tex_coord;
 } fs_in;
 
 uniform vec3 u_LightPos;
 uniform vec3 u_ViewPos;
 uniform vec3 u_Color;
+uniform sampler2D u_Texture;
 
 void main() {
     // Ambient
@@ -29,6 +31,6 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * vec3(1.0);
 
-    vec3 result = (ambient + diffuse + specular) * u_Color;
+    vec3 result = (ambient + diffuse + specular) * texture(u_Texture, fs_in.tex_coord).rgb;
     frag_color = vec4(result, 1.0);
 }

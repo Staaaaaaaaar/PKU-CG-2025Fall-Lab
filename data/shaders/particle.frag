@@ -6,12 +6,21 @@ in VS_OUT {
     vec3 frag_pos;
     vec3 normal;
     vec3 color;
+    float particle_size;
 } fs_in;
 
 uniform vec3 u_LightPos;
 uniform vec3 u_ViewPos;
 
 void main() {
+    // Make the particle a soft circle
+    float dist = length(gl_PointCoord - vec2(0.5));
+    if (dist > 0.5) {
+        discard;
+    }
+    float alpha = 1.0 - smoothstep(0.45, 0.5, dist);
+
+
     // Ambient
     float ambientStrength = 0.1;
     vec3 ambient = ambientStrength * vec3(1.0);
@@ -30,5 +39,5 @@ void main() {
     vec3 specular = specularStrength * spec * vec3(1.0);
 
     vec3 result = (ambient + diffuse + specular) * fs_in.color;
-    frag_color = vec4(result, 1.0);
+    frag_color = vec4(result, alpha);
 }
