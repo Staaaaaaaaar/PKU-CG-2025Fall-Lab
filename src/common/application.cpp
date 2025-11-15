@@ -268,8 +268,11 @@ void ModelViewerCamera::draw_ui() {
 }
 
 void ModelViewerCamera::orbit(float delta_yaw, float delta_pitch) {
+  float _pitch_min = glm::radians(10.0f);
+  float _pitch_max = glm::radians(170.0f);
+
   _yaw += delta_yaw;
-  _pitch += delta_pitch;
+  _pitch = glm::clamp(_pitch + delta_pitch, _pitch_min, _pitch_max);
 }
 
 void ModelViewerCamera::zoom(float delta_distance) {

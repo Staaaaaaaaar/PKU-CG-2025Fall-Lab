@@ -70,7 +70,17 @@ private:
     void draw_ui() {
         ImGui::Begin("Settings");
         ImGui::Text("Light Settings");
-        ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
+        ImGui::Checkbox("Directional Light", &_use_directional_light);
+        if (_use_directional_light) {
+            if (ImGui::SliderFloat3("Light Direction", glm::value_ptr(_light_dir), -1.0f, 1.0f)) {
+                if (glm::length(_light_dir) < 0.001f) {
+                    _light_dir = glm::vec3(0.0f, -1.0f, 0.0f);
+                }
+                _light_dir = glm::normalize(_light_dir);
+            }
+        } else {
+            ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
+        }
         if (ImGui::CollapsingHeader("Camera")) {
             _camera->draw_ui();
         }
@@ -92,12 +102,16 @@ private:
         // Draw planet
         glUseProgram(_planet_program->get());
         glm::mat4 model = glm::mat4(1.0f);
+        const int light_type = _use_directional_light ? 1 : 0;
+        const glm::vec3 light_dir = glm::normalize(_light_dir);
         glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_Model"), 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_View"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_Projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
+        glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_LightDir"), 1, glm::value_ptr(light_dir));
         glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
         glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_Color"), 1, glm::value_ptr(glm::vec3(0.9f, 0.8f, 0.6f)));
+        glUniform1i(glGetUniformLocation(_planet_program->get(), "u_LightType"), light_type);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, _planet_texture->get());
         glUniform1i(glGetUniformLocation(_planet_program->get(), "u_Texture"), 0);
@@ -110,7 +124,9 @@ private:
         glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_View"), 1, GL_FALSE, glm::value_ptr(view));
         glUniform1f(glGetUniformLocation(_particle_program->get(), "u_Time"), (float)glfwGetTime());
         glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
+        glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_LightDir"), 1, glm::value_ptr(light_dir));
         glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
+        glUniform1i(glGetUniformLocation(_particle_program->get(), "u_LightType"), light_type);
 
         glBindVertexArray(_particle_vao);
         glDrawArraysInstanced(GL_POINTS, 0, 1, _particle_count);
@@ -175,6 +191,8 @@ private:
     GLuint _particle_vao = 0, _particle_vbo = 0;
     int _particle_count = 0;
     glm::vec3 _light_pos = glm::vec3(60.0f, 60.0f, 60.0f);
+    glm::vec3 _light_dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.25f));
+    bool _use_directional_light = false;
     int _width = 1280, _height = 720;
     bool _is_orbiting = false;
     double _last_cursor_x = 0.0;

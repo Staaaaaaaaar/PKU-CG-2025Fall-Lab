@@ -9,9 +9,11 @@ in VS_OUT {
 } fs_in;
 
 uniform vec3 u_LightPos;
+uniform vec3 u_LightDir;
 uniform vec3 u_ViewPos;
 uniform vec3 u_Color;
 uniform sampler2D u_Texture;
+uniform int u_LightType;
 
 void main() {
     // Ambient
@@ -20,7 +22,9 @@ void main() {
 
     // Diffuse
     vec3 norm = normalize(fs_in.normal);
-    vec3 lightDir = normalize(u_LightPos - fs_in.frag_pos);
+    vec3 lightDir = (u_LightType == 0)
+                        ? normalize(u_LightPos - fs_in.frag_pos)
+                        : normalize(-u_LightDir);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * vec3(1.0);
 
