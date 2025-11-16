@@ -7,11 +7,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/constants.hpp>
 #include <imgui/imgui.h>
 #include <iostream>
 #include <vector>
 #include <memory>
 #include <filesystem>
+#include <cmath>
 
 namespace fs = std::filesystem;
 
@@ -65,6 +67,7 @@ private:
 
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_PROGRAM_POINT_SIZE);
+        _last_frame_time = glfwGetTime();
     }
 
     void draw_ui() {
@@ -92,6 +95,7 @@ private:
                 _particle_count = new_count;
             }
         }
+        ImGui::SliderFloat("Planet Rotation (deg/s)", &_planet_rotation_speed_deg, -60.0f, 60.0f);
         if (ImGui::CollapsingHeader("Camera")) {
             _camera->draw_ui();
         }
@@ -112,7 +116,7 @@ private:
 
         // Draw planet
         glUseProgram(_planet_program->get());
-        glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 model = glm::rotate(glm::mat4(1.0f), _planet_rotation_angle, glm::vec3(0.0f, 0.0f, 1.0f));
         const int light_type = _use_directional_light ? 1 : 0;
         const glm::vec3 light_dir = glm::normalize(_light_dir);
         glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_Model"), 1, GL_FALSE, glm::value_ptr(model));
@@ -145,6 +149,16 @@ private:
     }
 
     void update() override {
+        double current_time = glfwGetTime();
+        float delta_seconds = static_cast<float>(current_time - _last_frame_time);
+        _last_frame_time = current_time;
+
+        float delta_radians = glm::radians(_planet_rotation_speed_deg) * delta_seconds;
+        _planet_rotation_angle = std::fmod(_planet_rotation_angle + delta_radians, glm::two_pi<float>());
+        if (_planet_rotation_angle < 0.0f) {
+            _planet_rotation_angle += glm::two_pi<float>();
+        }
+
         draw_ui();
         draw();
     }
@@ -210,6 +224,9 @@ private:
     double _last_cursor_y = 0.0;
     const float _orbit_sensitivity = 0.005f;
     const float _zoom_sensitivity = 1.0f;
+    float _planet_rotation_angle = 0.0f;
+    float _planet_rotation_speed_deg = 20.0f;
+    double _last_frame_time = 0.0;
 };
 
 Mesh create_sphere_mesh(float radius, int sectors, int stacks) {

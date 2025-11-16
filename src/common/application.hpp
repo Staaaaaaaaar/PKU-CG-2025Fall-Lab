@@ -77,6 +77,6 @@ private:
   float _focus_height = 0.25f;
   float _field_of_view = glm::radians(25.0f);
   float _pitch = glm::radians(60.0f);
-  float _yaw = glm::radians(60.0f);
+  float _yaw = glm::radians(100.0f);
   float _distance = 120.0f;
 };
