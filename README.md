@@ -1,17 +1,32 @@
 # Hand
 
-北京大学图形学课程小作业代码。
+北京大学图形学课程第一次小作业代码。
 
-> 注：Assimp是经过裁剪的版本，只支持FBX文件的导入
+> 注：Assimp 是经过裁剪的版本，只支持 FBX 文件的导入
 
 ## 作业要求
 
-- 代码可编译运行
-- 手的模型能正常显示
-- 五根手指都能动
-- 完成3个动作（有负面意义的手势不得分）
-  - 举例：抓握，挥手，OK，点赞，“手枪”，数字1-9
-- 有键盘、鼠标交互事件
+- **基本要求**:
+
+  1. 利用示例程序或自行编程实现手的运动，并绘制运动结果。
+  2. 可以通过键盘/鼠标输入交互地修改或变换手势。
+
+- **考查知识点**: 图形变换和基本图形编程知识。
+
+---
+
+### 评分标准 (共 5 分)
+
+- **1 分**: 代码可编译运行。
+- **1 分**: 手的模型能正常显示。
+- **1 分**: 五根手指都能动。
+- **1 分**: 完成 3 个动作（有负面意义的手势不得分）。
+  - _示例_: 抓握, 挥手, OK, 点赞, “手枪”, 数字 1-9。
+- **1 分**: 有键盘、鼠标交互事件。
+
+### 加分项
+
+- 设计丰富的手势和交互方法。
 
 ## 环境配置
 
@@ -31,51 +46,56 @@
 ### Windows (使用 VS Code)
 
 1.  **环境准备**:
-    *   安装 [Visual Studio Community Edition](https://visualstudio.microsoft.com/vs/community/)，并确保在安装时勾选 **“使用 C++ 的桌面开发”** 工作负载。这将安装所需的 MSVC 编译器。
-    *   安装 [CMake](https://cmake.org/download/) 并确保将其添加到系统的 `PATH` 环境变量中。
-    *   在 VS Code 中，从扩展市场安装以下两个扩展：
-        *   [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
-        *   [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
+
+    - 安装 [Visual Studio Community Edition](https://visualstudio.microsoft.com/vs/community/)，并确保在安装时勾选 **“使用 C++ 的桌面开发”** 工作负载。
+    - 安装 [CMake](https://cmake.org/download/) 并确保将其添加到系统的 `PATH` 环境变量中。
+    - 在 VS Code 中，安装 [C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) 和 [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) 扩展。
 
 2.  **克隆仓库并打开项目**:
+
     ```bash
     git clone https://github.com/Staaaaaaaaar/PKU-CG-2025Fall-Lab.git
     cd PKU-CG-2025Fall-Lab
-    code . 
+    git checkout hand
+    code .
     ```
 
 3.  **配置和编译**:
-    *   用 VS Code 打开项目文件夹后，CMake Tools 扩展会自动开始配置项目。
-    *   您可能会在 VS Code 底部看到一个提示，要求选择一个 "Kit"（编译器）。选择一个检测到的 Visual Studio 编译器，例如 `Visual Studio Community 2022 Release - amd64`。
-    *   配置完成后，点击 VS Code 底部状态栏的 **`Build`** 按钮，或者按快捷键 `F7` 来编译整个项目。
+
+    - 用 VS Code 打开项目文件夹后，CMake Tools 扩展会自动开始配置项目。
+    - 选择一个检测到的 Visual Studio 编译器 Kit。
+    - 配置完成后，点击 VS Code 底部状态栏的 **`Build`** 按钮（或按 `F7`）来编译项目。
 
 4.  **运行程序**:
-    *   编译成功后，点击状态栏中的 **`Launch`** 按钮（通常在 `Build` 按钮旁边），或者按 `Shift+F5` 来启动程序。
-    *   CMake Tools 会自动选择 `Hand` 作为启动目标。如果不是，您可以在状态栏点击目标名称进行切换。
+    - 编译成功后，在状态栏中选择 `Hand` 作为启动目标。
+    - 点击状态栏中的 **`Launch`** 按钮（或按 `Shift+F5`）来启动程序。
 
 ### macOS / Linux
 
 1.  **克隆仓库**:
+
     ```bash
     git clone https://github.com/Staaaaaaaaar/PKU-CG-2025Fall-Lab.git
     cd PKU-CG-2025Fall-Lab
+    git checkout hand
     ```
 
 2.  **创建 build 目录并构建**:
+
     ```bash
-    mkdir build
+    mkdir -p build
     cd build
     cmake ..
     ```
 
 3.  **编译**:
-    在 `build` 目录下执行 `make` 命令。
+
     ```bash
     make
     ```
 
 4.  **运行程序**:
-    编译成功后，可执行文件将位于 `build/bin` 或 `build/src` 目录下。
+    编译成功后，可执行文件将位于 `build/src` 目录下。
     ```bash
     # 在 build 目录下执行
     ./src/Hand
@@ -84,7 +104,8 @@
 ## 使用说明
 
 - **鼠标交互**:
-  - 按住鼠标左键并拖动，可以自由旋转手部模型。
+
+  - 按住鼠标 **左键** 并拖动，可以自由旋转手部模型。
 
 - **键盘交互**:
   - **`ESC`**: 关闭窗口。
