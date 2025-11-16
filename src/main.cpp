@@ -41,7 +41,7 @@ private:
 
         _planet_texture = std::make_unique<Texture2D>(fs::path("textures/2k_saturn.jpg"));
         // Particle data
-        _particle_count = 50000;
+        _particle_count = 40000;
         std::vector<float> seeds(_particle_count);
         srand(time(0));
         for (int i = 0; i < _particle_count; ++i) {
@@ -135,12 +135,16 @@ private:
 
         // Draw particles
         glUseProgram(_particle_program->get());
+        glm::mat4 inverseView = glm::inverse(view);
         glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_Projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_View"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_InverseViewMatrix"), 1, GL_FALSE, glm::value_ptr(inverseView));
         glUniform1f(glGetUniformLocation(_particle_program->get(), "u_Time"), (float)glfwGetTime());
         glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
         glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_LightDir"), 1, glm::value_ptr(light_dir));
         glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
+        glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_PlanetCenter"), 1, glm::value_ptr(_planet_center));
+        glUniform1f(glGetUniformLocation(_particle_program->get(), "u_PlanetRadius"), _planet_radius);
         glUniform1i(glGetUniformLocation(_particle_program->get(), "u_LightType"), light_type);
 
         glBindVertexArray(_particle_vao);
@@ -215,9 +219,11 @@ private:
     std::unique_ptr<Texture2D> _planet_texture;
     GLuint _particle_vao = 0, _particle_vbo = 0;
     int _particle_count = 0;
-    glm::vec3 _light_pos = glm::vec3(60.0f, 60.0f, 60.0f);
+    glm::vec3 _light_pos = glm::vec3(60.0f, 60.0f, 30.0f);
     glm::vec3 _light_dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.25f));
     bool _use_directional_light = false;
+    const glm::vec3 _planet_center = glm::vec3(0.0f, 0.0f, 0.0f);
+    const float _planet_radius = 10.0f;
     int _width = 1280, _height = 720;
     bool _is_orbiting = false;
     double _last_cursor_x = 0.0;
