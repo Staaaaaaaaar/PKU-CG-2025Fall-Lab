@@ -282,8 +282,19 @@ void ModelViewerCamera::zoom(float delta_distance) {
 }
 
 glm::vec3 ModelViewerCamera::position() const {
-  return _distance * polar_to_cartesian(_yaw, _pitch) +
-         glm::vec3(0.0f, _focus_height, 0.0f);
+  // Using z-up convention with _pitch measured as the polar angle from +Z axis
+  // (0 = top, pi = bottom) and _yaw as the azimuth around Z.
+  // Spherical -> Cartesian:
+  // x = sin(pitch) * cos(yaw)
+  // y = sin(pitch) * sin(yaw)
+  // z = cos(pitch)
+  float sp = glm::sin(_pitch);
+  float cp = glm::cos(_pitch);
+  float cy = glm::cos(_yaw);
+  float sy = glm::sin(_yaw);
+
+  glm::vec3 dir(sp * cy, sp * sy, cp);
+  return _distance * dir + glm::vec3(0.0f, 0.0f, _focus_height);
 }
 
 glm::mat4 ModelViewerCamera::projection(float aspect) const {
@@ -293,6 +304,6 @@ glm::mat4 ModelViewerCamera::projection(float aspect) const {
 glm::mat4 ModelViewerCamera::view() const {
   glm::vec3 pos = position();
   glm::mat4 view =
-      glm::lookAt(pos, glm::vec3(0, _focus_height, 0), glm::vec3(0, 1, 0));
+      glm::lookAt(pos, glm::vec3(0, 0, _focus_height), glm::vec3(0, 0, 1));
   return view;
 }

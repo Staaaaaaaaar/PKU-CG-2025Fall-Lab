@@ -160,7 +160,7 @@ private:
         if (_is_orbiting && _camera) {
             float dx = static_cast<float>(xpos - _last_cursor_x);
             float dy = static_cast<float>(ypos - _last_cursor_y);
-            _camera->orbit(dx * _orbit_sensitivity, -dy * _orbit_sensitivity);
+            _camera->orbit(-dx * _orbit_sensitivity, -dy * _orbit_sensitivity);
         }
 
         _last_cursor_x = xpos;
