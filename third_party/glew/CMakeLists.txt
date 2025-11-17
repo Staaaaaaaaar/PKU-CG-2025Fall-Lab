@@ -99,7 +99,7 @@ include_directories (${GLEW_DIR}/include ${X11_INCLUDE_DIR})
 set (GLEW_PUBLIC_HEADERS_FILES ${GLEW_DIR}/include/GL/wglew.h ${GLEW_DIR}/include/GL/glew.h ${GLEW_DIR}/include/GL/glxew.h)
 set (GLEW_SRC_FILES ${GLEW_DIR}/src/glew.c)
 
-if (WIN32)
+if (WIN32 AND EXISTS ${GLEW_DIR}/build/glew.rc)
   list (APPEND GLEW_SRC_FILES ${GLEW_DIR}/build/glew.rc)
 endif ()
 
