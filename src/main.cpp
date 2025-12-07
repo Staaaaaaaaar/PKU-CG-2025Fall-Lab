@@ -39,7 +39,6 @@ private:
 
     void draw_ui() {
         ImGui::Begin("Settings");
-        ImGui::Text("Light Settings");
         ImGui::Checkbox("Use Normal Map", &_use_normal_map);
         ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
         if (ImGui::CollapsingHeader("Camera")) {
