@@ -17,85 +17,31 @@
 
 namespace fs = std::filesystem;
 
-// Function to create a sphere mesh (you might need to implement this or get it from somewhere)
-Mesh create_sphere_mesh(float radius, int sectors, int stacks);
+Mesh create_cube_mesh(float size);
 
-class ParticleApp final : public Application {
+class CubeApp final : public Application {
 public:
-    ParticleApp() : Application("Particle System", 1280, 720) {}
+    CubeApp() : Application("NormalMap Cube", 1280, 720) {}
 
 private:
     void init() override {
-        // Camera setup
         _camera = std::make_unique<ModelViewerCamera>();
-
-        // Load shaders
-        _particle_program = Program::create_from_files(
-            fs::path("shaders/particle.vert"), 
-            fs::path("shaders/particle.frag")
+        _cube_program = Program::create_from_files(
+            fs::path("shaders/cube.vert"),
+            fs::path("shaders/cube.frag")
         );
-        _planet_program = Program::create_from_files(
-            fs::path("shaders/planet.vert"), 
-            fs::path("shaders/planet.frag")
-        );
-
-        _planet_texture = std::make_unique<Texture2D>(fs::path("textures/2k_saturn.jpg"));
-        // Particle data
-        _particle_count = 40000;
-        std::vector<float> seeds(_particle_count);
-        srand(time(0));
-        for (int i = 0; i < _particle_count; ++i) {
-            seeds[i] = static_cast<float>(rand()) / RAND_MAX;
-        }
-
-        glGenVertexArrays(1, &_particle_vao);
-        glGenBuffers(1, &_particle_vbo);
-
-        glBindVertexArray(_particle_vao);
-        glBindBuffer(GL_ARRAY_BUFFER, _particle_vbo);
-        glBufferData(GL_ARRAY_BUFFER, seeds.size() * sizeof(float), seeds.data(), GL_STATIC_DRAW);
-
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-
-        glVertexAttribDivisor(0, 1); // Instanced rendering
-
-        // Planet model
-        _planet_mesh = std::make_unique<Mesh>(create_sphere_mesh(10.0f, 64, 32));
-
-        glBindVertexArray(0);
-
+        _cube_texture = std::make_unique<Texture2D>(fs::path("textures/StoneBricksSplitface/StoneBricksSplitface001_COL_2K.jpg"));
+        _cube_normal = std::make_unique<Texture2D>(fs::path("textures/StoneBricksSplitface/StoneBricksSplitface001_NRM_2K.jpg"));
+        _cube_mesh = std::make_unique<Mesh>(create_cube_mesh(10.0f));
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_PROGRAM_POINT_SIZE);
         _last_frame_time = glfwGetTime();
     }
 
     void draw_ui() {
         ImGui::Begin("Settings");
         ImGui::Text("Light Settings");
-        ImGui::Checkbox("Directional Light", &_use_directional_light);
-        if (_use_directional_light) {
-            if (ImGui::SliderFloat3("Light Direction", glm::value_ptr(_light_dir), -1.0f, 1.0f)) {
-                if (glm::length(_light_dir) < 0.001f) {
-                    _light_dir = glm::vec3(0.0f, -1.0f, 0.0f);
-                }
-                _light_dir = glm::normalize(_light_dir);
-            }
-        } else {
-            ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
-        }
-        ImGui::Text("Particle Settings");
-        int new_count = _particle_count;
-        if (ImGui::SliderInt("Particle Count", &new_count, 10000, 1000000)) {
-            if (new_count != _particle_count) {
-                std::vector<float> seeds(new_count);
-                for (float &s : seeds) { s = rand() / static_cast<float>(RAND_MAX); }
-                glBindBuffer(GL_ARRAY_BUFFER, _particle_vbo);
-                glBufferData(GL_ARRAY_BUFFER, seeds.size() * sizeof(float), seeds.data(), GL_STATIC_DRAW);
-                _particle_count = new_count;
-            }
-        }
-        ImGui::SliderFloat("Planet Rotation (deg/s)", &_planet_rotation_speed_deg, -60.0f, 60.0f);
+        ImGui::Checkbox("Use Normal Map", &_use_normal_map);
+        ImGui::SliderFloat3("Light Position", glm::value_ptr(_light_pos), -100.0f, 100.0f);
         if (ImGui::CollapsingHeader("Camera")) {
             _camera->draw_ui();
         }
@@ -110,58 +56,36 @@ private:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         float aspect = (float)_width / (float)_height;
-        if (_height == 0) aspect = 1.0f; // Avoid division by zero
+        if (_height == 0) aspect = 1.0f;
         glm::mat4 projection = _camera->projection(aspect);
         glm::mat4 view = _camera->view();
 
-        // Draw planet
-        glUseProgram(_planet_program->get());
-        glm::mat4 model = glm::rotate(glm::mat4(1.0f), _planet_rotation_angle, glm::vec3(0.0f, 0.0f, 1.0f));
-        const int light_type = _use_directional_light ? 1 : 0;
+        glUseProgram(_cube_program->get());
+        glm::mat4 model = glm::mat4(1.0f);
+        const int light_type = 0;
         const glm::vec3 light_dir = glm::normalize(_light_dir);
-        glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_Model"), 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_View"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(_planet_program->get(), "u_Projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
-        glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_LightDir"), 1, glm::value_ptr(light_dir));
-        glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
-        glUniform3fv(glGetUniformLocation(_planet_program->get(), "u_Color"), 1, glm::value_ptr(glm::vec3(0.9f, 0.8f, 0.6f)));
-        glUniform1i(glGetUniformLocation(_planet_program->get(), "u_LightType"), light_type);
+        glUniformMatrix4fv(glGetUniformLocation(_cube_program->get(), "u_Model"), 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(glGetUniformLocation(_cube_program->get(), "u_View"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(_cube_program->get(), "u_Projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3fv(glGetUniformLocation(_cube_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
+        glUniform3fv(glGetUniformLocation(_cube_program->get(), "u_LightDir"), 1, glm::value_ptr(light_dir));
+        glUniform3fv(glGetUniformLocation(_cube_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
+        glUniform3fv(glGetUniformLocation(_cube_program->get(), "u_Color"), 1, glm::value_ptr(glm::vec3(0.9f, 0.8f, 0.6f)));
+        glUniform1i(glGetUniformLocation(_cube_program->get(), "u_LightType"), light_type);
+        glUniform1i(glGetUniformLocation(_cube_program->get(), "u_UseNormalMap"), _use_normal_map);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, _planet_texture->get());
-        glUniform1i(glGetUniformLocation(_planet_program->get(), "u_Texture"), 0);
-        _planet_mesh->draw();
-
-
-        // Draw particles
-        glUseProgram(_particle_program->get());
-        glm::mat4 inverseView = glm::inverse(view);
-        glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_Projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_View"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(_particle_program->get(), "u_InverseViewMatrix"), 1, GL_FALSE, glm::value_ptr(inverseView));
-        glUniform1f(glGetUniformLocation(_particle_program->get(), "u_Time"), (float)glfwGetTime());
-        glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_LightPos"), 1, glm::value_ptr(_light_pos));
-        glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_LightDir"), 1, glm::value_ptr(light_dir));
-        glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_ViewPos"), 1, glm::value_ptr(_camera->position()));
-        glUniform3fv(glGetUniformLocation(_particle_program->get(), "u_PlanetCenter"), 1, glm::value_ptr(_planet_center));
-        glUniform1f(glGetUniformLocation(_particle_program->get(), "u_PlanetRadius"), _planet_radius);
-        glUniform1i(glGetUniformLocation(_particle_program->get(), "u_LightType"), light_type);
-
-        glBindVertexArray(_particle_vao);
-        glDrawArraysInstanced(GL_POINTS, 0, 1, _particle_count);
-        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, _cube_texture->get());
+        glUniform1i(glGetUniformLocation(_cube_program->get(), "u_Texture"), 0);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, _cube_normal->get());
+        glUniform1i(glGetUniformLocation(_cube_program->get(), "u_NormalMap"), 1);
+        _cube_mesh->draw();
     }
 
     void update() override {
         double current_time = glfwGetTime();
         float delta_seconds = static_cast<float>(current_time - _last_frame_time);
         _last_frame_time = current_time;
-
-        float delta_radians = glm::radians(_planet_rotation_speed_deg) * delta_seconds;
-        _planet_rotation_angle = std::fmod(_planet_rotation_angle + delta_radians, glm::two_pi<float>());
-        if (_planet_rotation_angle < 0.0f) {
-            _planet_rotation_angle += glm::two_pi<float>();
-        }
 
         draw_ui();
         draw();
@@ -213,103 +137,63 @@ private:
     }
 
     std::unique_ptr<ModelViewerCamera> _camera;
-    std::unique_ptr<Program> _particle_program;
-    std::unique_ptr<Program> _planet_program;
-    std::unique_ptr<Mesh> _planet_mesh;
-    std::unique_ptr<Texture2D> _planet_texture;
-    GLuint _particle_vao = 0, _particle_vbo = 0;
-    int _particle_count = 0;
+    std::unique_ptr<Program> _cube_program;
+    std::unique_ptr<Mesh> _cube_mesh;
+    std::unique_ptr<Texture2D> _cube_texture;
+    std::unique_ptr<Texture2D> _cube_normal;
     glm::vec3 _light_pos = glm::vec3(60.0f, 60.0f, 30.0f);
     glm::vec3 _light_dir = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.25f));
-    bool _use_directional_light = false;
-    const glm::vec3 _planet_center = glm::vec3(0.0f, 0.0f, 0.0f);
-    const float _planet_radius = 10.0f;
+    bool _use_normal_map = true;
     int _width = 1280, _height = 720;
     bool _is_orbiting = false;
     double _last_cursor_x = 0.0;
     double _last_cursor_y = 0.0;
     const float _orbit_sensitivity = 0.005f;
     const float _zoom_sensitivity = 1.0f;
-    float _planet_rotation_angle = 0.0f;
-    float _planet_rotation_speed_deg = 20.0f;
     double _last_frame_time = 0.0;
 };
 
-Mesh create_sphere_mesh(float radius, int sectors, int stacks) {
+
+// 立方体网格生成，带法线和切线
+Mesh create_cube_mesh(float size) {
+    float h = size * 0.5f;
     std::vector<Mesh::Vertex> vertices;
     std::vector<uint32_t> indices;
-
-    float x, y, z, xy;                              // vertex position
-    float nx, ny, nz, lengthInv = 1.0f / radius;    // vertex normal
-    float s, t;                                     // vertex texCoord
-
-    float sectorStep = 2 * M_PI / sectors;
-    float stackStep = M_PI / stacks;
-    float sectorAngle, stackAngle;
-
-    for(int i = 0; i <= stacks; ++i)
-    {
-        stackAngle = M_PI / 2 - i * stackStep;        // starting from pi/2 to -pi/2
-        xy = radius * cosf(stackAngle);             // r * cos(u)
-        z = radius * sinf(stackAngle);              // r * sin(u)
-
-        // add (sectorCount+1) vertices per stack
-        // the first and last vertices have same position and normal, but different tex coords
-        for(int j = 0; j <= sectors; ++j)
-        {
-            sectorAngle = j * sectorStep;           // starting from 0 to 2pi
-
-            // vertex position (x, y, z)
-            x = xy * cosf(sectorAngle);             // r * cos(u) * cos(v)
-            y = xy * sinf(sectorAngle);             // r * cos(u) * sin(v)
-            
-            // normalized vertex normal (nx, ny, nz)
-            nx = x * lengthInv;
-            ny = y * lengthInv;
-            nz = z * lengthInv;
-
-            // vertex tex coord (s, t) range between [0, 1]
-            s = (float)j / sectors;
-            t = (float)i / stacks;
-            
-            vertices.push_back({{x, y, z}, {nx, ny, nz}, {}, {s, t}, {}, {}});
+    // 每个面4个顶点，6个面
+    struct Face {
+        glm::vec3 normal;
+        glm::vec4 tangent;
+        glm::vec3 v[4];
+        glm::vec2 uv[4];
+    } faces[6] = {
+        // +X
+        { {1,0,0}, {0,1,0,1}, { {h,-h,-h}, {h,-h,h}, {h,h,h}, {h,h,-h} }, { {0,0},{1,0},{1,1},{0,1} } },
+        // -X
+        { {-1,0,0}, {0,1,0,1}, { {-h,-h,h}, {-h,-h,-h}, {-h,h,-h}, {-h,h,h} }, { {0,0},{1,0},{1,1},{0,1} } },
+        // +Y
+        { {0,1,0}, {1,0,0,1}, { {-h,h,-h}, {h,h,-h}, {h,h,h}, {-h,h,h} }, { {0,0},{1,0},{1,1},{0,1} } },
+        // -Y
+        { {0,-1,0}, {1,0,0,1}, { {-h,-h,h}, {h,-h,h}, {h,-h,-h}, {-h,-h,-h} }, { {0,0},{1,0},{1,1},{0,1} } },
+        // +Z
+        { {0,0,1}, {1,0,0,1}, { {-h,-h,h}, {-h,h,h}, {h,h,h}, {h,-h,h} }, { {0,0},{1,0},{1,1},{0,1} } },
+        // -Z
+        { {0,0,-1}, {1,0,0,1}, { {h,-h,-h}, {h,h,-h}, {-h,h,-h}, {-h,-h,-h} }, { {0,0},{1,0},{1,1},{0,1} } },
+    };
+    for(int f=0;f<6;++f) {
+        int base = vertices.size();
+        for(int v=0;v<4;++v) {
+            vertices.push_back({faces[f].v[v], faces[f].normal, faces[f].tangent, faces[f].uv[v], {}, {}});
         }
+        indices.push_back(base+0); indices.push_back(base+1); indices.push_back(base+2);
+        indices.push_back(base+0); indices.push_back(base+2); indices.push_back(base+3);
     }
-
-    int k1, k2;
-    for(int i = 0; i < stacks; ++i)
-    {
-        k1 = i * (sectors + 1);     // beginning of current stack
-        k2 = k1 + sectors + 1;      // beginning of next stack
-
-        for(int j = 0; j < sectors; ++j, ++k1, ++k2)
-        {
-            // 2 triangles per sector excluding first and last stacks
-            // k1 => k2 => k1+1
-            if(i != 0)
-            {
-                indices.push_back(k1);
-                indices.push_back(k2);
-                indices.push_back(k1 + 1);
-            }
-
-            // k1+1 => k2 => k2+1
-            if(i != (stacks-1))
-            {
-                indices.push_back(k1 + 1);
-                indices.push_back(k2);
-                indices.push_back(k2 + 1);
-            }
-        }
-    }
-
     return Mesh(vertices.data(), vertices.size(), indices.data(), indices.size());
 }
 
 
 int main() {
     try {
-        ParticleApp app{};
+        CubeApp app{};
         app.run();
     } catch (std::exception &e) {
         std::cerr << e.what() << std::endl;
